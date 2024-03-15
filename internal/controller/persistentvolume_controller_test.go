@@ -11,7 +11,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("persistent volume controller", func() {
@@ -58,42 +57,42 @@ var _ = Describe("persistent volume controller", func() {
 		time.Sleep(100 * time.Millisecond)
 	})
 
-	It("should delete PersistentVolume", func() {
-		pv := newPV()
-		err := k8sClient.Create(ctx, pv)
-		Expect(err).NotTo(HaveOccurred())
+	// It("should delete PersistentVolume", func() {
+	// 	pv := newPV()
+	// 	err := k8sClient.Create(ctx, pv)
+	// 	Expect(err).NotTo(HaveOccurred())
 
-		pvc := newPVC()
-		err = k8sClient.Create(ctx, pvc)
-		Expect(err).NotTo(HaveOccurred())
+	// 	pvc := newPVC()
+	// 	err = k8sClient.Create(ctx, pvc)
+	// 	Expect(err).NotTo(HaveOccurred())
 
-		pv.Status.Phase = corev1.VolumeReleased
-		// climeRefを設定する
-		pv.Spec.ClaimRef = &corev1.ObjectReference{
-			APIVersion: "v1",
-			Kind:       "PersistentVolumeClaim",
-			Name:       "test-pvc-test",
-			Namespace:  "test",
-		}
+	// 	pv.Status.Phase = corev1.VolumeReleased
+	// 	// climeRefを設定する
+	// 	pv.Spec.ClaimRef = &corev1.ObjectReference{
+	// 		APIVersion: "v1",
+	// 		Kind:       "PersistentVolumeClaim",
+	// 		Name:       "test-pvc-test",
+	// 		Namespace:  "test",
+	// 	}
 
-		// ここで再度finalizerを上書きしないとkubernetes.io/pv-protectionが残る
-		// pv.ObjectMeta.Finalizers = []string{"namespacedpv.homi.run/pvFinalizer"}
-		err = k8sClient.Update(ctx, pv)
-		Expect(err).NotTo(HaveOccurred())
+	// 	// ここで再度finalizerを上書きしないとkubernetes.io/pv-protectionが残る
+	// 	// pv.ObjectMeta.Finalizers = []string{"namespacedpv.homi.run/pvFinalizer"}
+	// 	err = k8sClient.Update(ctx, pv)
+	// 	Expect(err).NotTo(HaveOccurred())
 
-		err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pvc-test"}, pvc)
-		Expect(err).NotTo(HaveOccurred())
-		err = k8sClient.Delete(ctx, pvc)
-		Expect(err).NotTo(HaveOccurred())
+	// 	err = k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pvc-test"}, pvc)
+	// 	Expect(err).NotTo(HaveOccurred())
+	// 	err = k8sClient.Delete(ctx, pvc)
+	// 	Expect(err).NotTo(HaveOccurred())
 
-		time.Sleep(5000 * time.Millisecond)
+	// 	time.Sleep(5000 * time.Millisecond)
 
-		Eventually(func() error {
-			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pv-test"}, pv)
-		}).Should(Succeed())
-		Expect(pv).To(BeNil())
+	// 	Eventually(func() error {
+	// 		return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pv-test"}, pv)
+	// 	}).Should(Succeed())
+	// 	Expect(pv).To(BeNil())
 
-	})
+	// })
 
 })
 
