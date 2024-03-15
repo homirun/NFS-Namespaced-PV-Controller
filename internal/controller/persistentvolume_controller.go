@@ -77,6 +77,23 @@ func (r *PersistentVolumeReconciler) Reconcile(ctx context.Context, req ctrl.Req
 func (r *PersistentVolumeReconciler) DeletePV(ctx context.Context, pv *corev1.PersistentVolume, finalizerName string) error {
 	logger := log.FromContext(ctx)
 
+	if pv.Status.Phase == corev1.VolumeReleased {
+		if pv.Spec.PersistentVolumeReclaimPolicy == corev1.PersistentVolumeReclaimDelete && pv.Annotations["pv.kubernetes.io/provisioned-by"] == "namespaced-pv-controller" {
+			// if err := r.Delete(ctx, pv); err != nil {
+			// 	logger.Error(err, "unable to delete PersistentVolume")
+			// 	return err
+			// }
+
+			pvCopy := pv.DeepCopy()
+			pvCopy.Spec.ClaimRef = nil
+			patch := client.MergeFrom(pv)
+			if err := r.Patch(ctx, pvCopy, patch); err != nil {
+				logger.Error(err, "unable to patch PersistentVolume")
+				return err
+			}
+		}
+	}
+
 	if !pv.GetDeletionTimestamp().IsZero() {
 		if controllerutil.ContainsFinalizer(pv, finalizerName) && pv.Annotations["pv.kubernetes.io/provisioned-by"] == "namespaced-pv-controller" {
 			controllerutil.RemoveFinalizer(pv, finalizerName)

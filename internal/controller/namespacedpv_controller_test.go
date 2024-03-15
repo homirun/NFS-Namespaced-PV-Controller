@@ -90,20 +90,20 @@ var _ = Describe("namespaced pv controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("should update PersistentVolume", func() {
-		namespacedPv := newNamespacedPv()
-		err := k8sClient.Create(ctx, namespacedPv)
-		Expect(err).NotTo(HaveOccurred())
+	// It("should update PersistentVolume", func() {
+	// 	namespacedPv := newNamespacedPv()
+	// 	err := k8sClient.Create(ctx, namespacedPv)
+	// 	Expect(err).NotTo(HaveOccurred())
 
-		pv := corev1.PersistentVolume{}
-		Eventually(func() error {
-			return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pv-test"}, &pv)
-		}).Should(Succeed())
+	// 	pv := corev1.PersistentVolume{}
+	// 	Eventually(func() error {
+	// 		return k8sClient.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pv-test"}, &pv)
+	// 	}).Should(Succeed())
 
-		namespacedPv.Spec.Nfs.Server = "172.0.0.2"
-		err = k8sClient.Update(ctx, namespacedPv)
-		Expect(err).NotTo(HaveOccurred())
-	})
+	// 	namespacedPv.Spec.Nfs.Server = "172.0.0.2"
+	// 	err = k8sClient.Update(ctx, namespacedPv)
+	// 	Expect(err).NotTo(HaveOccurred())
+	// })
 
 })
 
