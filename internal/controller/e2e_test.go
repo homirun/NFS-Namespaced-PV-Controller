@@ -21,9 +21,9 @@ import (
 
 var _ = Describe("namespaced pv controller e2e test", func() {
 	ctx := context.Background()
-	c := prepare(ctx)
-
+	var c client.Client
 	BeforeEach(func() {
+		c = prepare(ctx)
 		pvs := &corev1.PersistentVolumeList{}
 		err := c.List(ctx, pvs)
 		Expect(err).NotTo(HaveOccurred())
@@ -35,6 +35,7 @@ var _ = Describe("namespaced pv controller e2e test", func() {
 	})
 
 	AfterEach(func() {
+		teardown(c)
 		time.Sleep(100 * time.Millisecond)
 	})
 
@@ -43,23 +44,30 @@ var _ = Describe("namespaced pv controller e2e test", func() {
 		err := c.Create(ctx, pv)
 		Expect(err).NotTo(HaveOccurred())
 
+		Eventually(func() error {
+			err = c.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pv-test"}, pv)
+			if err != nil {
+				return err
+			}
+
+			pv.Status.Phase = corev1.VolumeReleased
+			pv.Spec.ClaimRef = &corev1.ObjectReference{
+				APIVersion: "v1",
+				Kind:       "PersistentVolumeClaim",
+				Name:       "test-pvc-test",
+				Namespace:  "test",
+			}
+
+			err = c.Update(ctx, pv)
+			return err
+		}).Should(Succeed())
+
 		pvc := newPVC()
 		err = c.Create(ctx, pvc)
 		Expect(err).NotTo(HaveOccurred())
-
-		pv.Status.Phase = corev1.VolumeReleased
-		pv.Spec.ClaimRef = &corev1.ObjectReference{
-			APIVersion: "v1",
-			Kind:       "PersistentVolumeClaim",
-			Name:       "test-pvc-test",
-			Namespace:  "test",
-		}
-
-		err = c.Update(ctx, pv)
-		Expect(err).NotTo(HaveOccurred())
-
 		err = c.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pvc-test"}, pvc)
 		Expect(err).NotTo(HaveOccurred())
+
 		err = c.Delete(ctx, pvc)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -67,12 +75,9 @@ var _ = Describe("namespaced pv controller e2e test", func() {
 
 		Eventually(func() error {
 			return c.Get(ctx, client.ObjectKey{Namespace: "test", Name: "test-pv-test"}, pv)
-		}).Should(Succeed())
-		Expect(pv).To(BeNil())
+		}).WithTimeout(30 * time.Second).Should(HaveOccurred())
 
 	})
-
-	teardown(c)
 })
 
 func prepare(ctx context.Context) client.Client {
@@ -112,11 +117,11 @@ func prepare(ctx context.Context) client.Client {
 		panic(err)
 	}
 	ns := newTestNameSpace()
-	err = c.Create(ctx, ns)
-	if err != nil {
-		panic(err)
-	}
-	time.Sleep(1000 * time.Millisecond)
+
+	Eventually(func() error {
+		return c.Create(ctx, ns)
+	}).Should(Succeed())
+
 	return c
 }
 
@@ -125,31 +130,6 @@ func teardown(c client.Client) {
 	ns := newTestNameSpace()
 	c.Delete(ctx, ns, &client.DeleteOptions{})
 }
-
-// func newNamespacedPv() *namespacedpvv1.NamespacedPv {
-// 	return &namespacedpvv1.NamespacedPv{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      "namespaced-pv",
-// 			Namespace: "test",
-// 		},
-// 		Spec: namespacedpvv1.NamespacedPvSpec{
-// 			VolumeName:       "test-pv",
-// 			StorageClassName: "test-storageclass",
-// 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-// 			Capacity: corev1.ResourceList{
-// 				corev1.ResourceStorage: resource.MustParse("1Gi"),
-// 			},
-// 			Nfs: namespacedpvv1.NFS{
-// 				Server:   "127.0.0.1",
-// 				Path:     "/data/share",
-// 				ReadOnly: false,
-// 			},
-// 			ReclaimPolicy: corev1.PersistentVolumeReclaimRetain,
-// 			MountOptions:  "nolock,vers=4.1",
-// 			ClaimRefName:  "test-pvc",
-// 		},
-// 	}
-// }
 
 func newTestNameSpace() *corev1.Namespace {
 	return &corev1.Namespace{
@@ -191,22 +171,3 @@ func newHostPathPV() *corev1.PersistentVolume {
 		},
 	}
 }
-
-// func newPVC() *corev1.PersistentVolumeClaim {
-// 	storageClass := "test-storageclass"
-// 	return &corev1.PersistentVolumeClaim{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      "test-pvc-test",
-// 			Namespace: "test",
-// 		},
-// 		Spec: corev1.PersistentVolumeClaimSpec{
-// 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteMany},
-// 			Resources: corev1.ResourceRequirements{
-// 				Requests: corev1.ResourceList{
-// 					corev1.ResourceStorage: resource.MustParse("1Gi"),
-// 				},
-// 			},
-// 			StorageClassName: &storageClass,
-// 		},
-// 	}
-// }
