@@ -58,6 +58,10 @@ func (r *PersistentVolumeReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if pv.Annotations["pv.kubernetes.io/provisioned-by"] != "namespaced-pv-controller" {
+		return ctrl.Result{}, nil
+	}
+
 	finalizerName := "namespacedpv.homi.run/pvFinalizer"
 	if !controllerutil.ContainsFinalizer(pv, finalizerName) {
 		pvCopy := pv.DeepCopy()
